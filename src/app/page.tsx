@@ -56,7 +56,7 @@ export default function HomePage() {
               <Link href="/debate">토론 시작하기</Link>
             </Button>
             <Button asChild variant="ghost" className="text-muted-foreground hover:text-foreground">
-              <Link href="/score">나의 점수</Link>
+              <Link href="/leaderboard">리더 보드</Link>
             </Button>
             <Button asChild variant="ghost" className="text-muted-foreground hover:text-foreground">
               <Link href="/profile">내 프로필</Link>
@@ -88,7 +88,7 @@ export default function HomePage() {
                 <Link href="/debate">토론 시작하기</Link>
               </Button>
               <Button asChild variant="secondary" className="rounded-full px-6">
-                <Link href="/score">내 점수 보기</Link>
+                <Link href="/leaderboard">리더보드 보기</Link>
               </Button>
             </div>
           </div>
