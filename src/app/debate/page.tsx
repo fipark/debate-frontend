@@ -5,15 +5,30 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { TOPICS } from "@/dumidata/topics";
+import { levelBadgeVariant, levelLabel, TopicApi } from "@/dumidata/topics";
 
-function levelBadgeVariant(level: string) {
-  if (level === "초급") return "secondary" as const;
-  if (level === "중급") return "outline" as const;
-  return "destructive" as const;
+async function getTopics(): Promise<TopicApi[]> {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/topics`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch topics");
+  return res.json();
 }
 
-export default function DebateTopicLibraryPage() {
+export default async function DebateTopicLibraryPage() {
+  const topics = await getTopics();
+
+  //  카테고리별 그룹핑 (기존 TOPICS 구조처럼)
+  const grouped = topics.reduce<Record<string, TopicApi[]>>((acc, t) => {
+    (acc[t.category] ??= []).push(t);
+    return acc;
+  }, {});
+
+  const sections = Object.entries(grouped).map(([category, items]) => ({
+    category,
+    items,
+  }));
+
   return (
     <div className="min-h-screen bg-background">
       {/* 탑바 */}
@@ -61,7 +76,7 @@ export default function DebateTopicLibraryPage() {
 
         {/* 카테고리 */}
         <div className="space-y-12">
-          {TOPICS.map((section) => (
+          {sections.map((section) => (
             <section key={section.category}>
               <div className="mb-5 flex items-center gap-3">
                 <div className="h-1 w-7 rounded-full bg-primary" />
@@ -74,18 +89,17 @@ export default function DebateTopicLibraryPage() {
                     <CardHeader className="space-y-3">
                       <div>
                         <Badge variant={levelBadgeVariant(topic.level)} className="rounded-full">
-                          {topic.level}
+                          {levelLabel(topic.level)}
                         </Badge>
                       </div>
                       <CardTitle className="text-base leading-6 line-clamp-2">{topic.title}</CardTitle>
                     </CardHeader>
 
                     <CardContent className="flex-1">
-                      <p className="text-sm leading-6 text-muted-foreground line-clamp-3">{topic.desc}</p>
+                      <p className="text-sm leading-6 text-muted-foreground line-clamp-3">{topic.description ?? ""}</p>
                     </CardContent>
 
                     <CardFooter className="mt-auto">
-                      {/* 토론 시작 -> 주제별 토론방으로 이동  */}
                       <Button asChild className="w-full rounded-xl">
                         <Link href={`/debate/${topic.id}`}>토론 시작</Link>
                       </Button>

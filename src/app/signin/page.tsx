@@ -3,12 +3,20 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Mail, Lock } from "lucide-react";
-
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+import { api } from "@/lib/api/api";
+import { setTokens } from "@/lib/auth";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+
+type LoginResponse = { accessToken: string; refreshToken: string };
+type ApiErrorBody = { message?: string; error?: string };
+
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -22,14 +30,22 @@ export default function LoginPage() {
     try {
       setLoading(true);
 
-      // ✅ 나중에 백엔드 엔드포인트로 교체
-      // const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, { ... })
-      // const data = await res.json()
+      const res = await api.post<LoginResponse>("/auth/signin", {
+        email,
+        password,
+      });
 
-      console.log("LOGIN payload", { email, password });
-      alert("로그인 시도(더미). 나중에 API로 교체하면 됩니다.");
-    } catch {
-      alert("로그인 실패");
+      //  토큰 저장
+      setTokens(res.data);
+
+      alert("로그인 성공!");
+      router.push("/"); // 원하는 페이지로
+    } catch (err) {
+      if (axios.isAxiosError<ApiErrorBody>(err)) {
+        alert(err.response?.data?.message ?? err.response?.data?.error ?? "로그인 실패");
+      } else {
+        alert("로그인 실패");
+      }
     } finally {
       setLoading(false);
     }

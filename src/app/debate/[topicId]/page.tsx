@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { ArrowLeft, ThumbsDown, ThumbsUp, ShieldCheck, Trophy } from "lucide-react";
 
@@ -9,21 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { TOPICS } from "@/dumidata/topics";
-
-function findTopic(topicId: string) {
-  for (const section of TOPICS) {
-    const t = section.items.find((x) => x.id === topicId);
-    if (t) return { ...t, category: section.category };
-  }
-  return null;
-}
-
-function levelBadgeVariant(level: string) {
-  if (level === "초급") return "secondary" as const;
-  if (level === "중급") return "outline" as const;
-  return "destructive" as const;
-}
+import { levelBadgeVariant, levelLabel, TopicApi } from "@/dumidata/topics";
 
 type Side = "pro" | "con";
 
@@ -31,13 +17,75 @@ export default function DebateSetupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams();
-  const topicId = params.topicId as string;
+  const topicId = params.topicId as string; // route param
 
   // URL로도 초기값 줄 수 있게 (?side=pro)
   const initialSide = (searchParams.get("side") as Side) || null;
 
-  const topic = useMemo(() => findTopic(topicId), [topicId]);
   const [side, setSide] = useState<Side | null>(initialSide);
+  const [topic, setTopic] = useState<TopicApi | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function run() {
+      try {
+        setLoading(true);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/topics/${topicId}`);
+        if (!res.ok) throw new Error("failed");
+        const data = (await res.json()) as TopicApi;
+        if (alive) setTopic(data);
+      } catch {
+        if (alive) setTopic(null);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+
+    run();
+    return () => {
+      alive = false;
+    };
+  }, [topicId]);
+
+  const start = async () => {
+    if (!side) return;
+
+    const userStance = side === "pro" ? "PRO" : "CON";
+
+    try {
+      // 필요하면 로딩 상태 추가해도 됨
+      const accessToken = localStorage.getItem("accessToken");
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/debates`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken ?? ""}`,
+        },
+        body: JSON.stringify({
+          topicId: Number(topicId), // topicId가 숫자 라우트면 Number로
+          userStance,
+        }),
+      });
+
+      if (!res.ok) throw new Error("create session failed");
+      const session = (await res.json()) as { id: number };
+
+      router.push(`/debate/${topicId}/chat?side=${side}&sessionId=${session.id}`);
+    } catch {
+      alert("토론 세션 생성 실패");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-16">
+        <p className="text-lg font-semibold">주제를 불러오는 중…</p>
+      </div>
+    );
+  }
 
   if (!topic) {
     return (
@@ -49,12 +97,6 @@ export default function DebateSetupPage() {
       </div>
     );
   }
-
-  const start = () => {
-    if (!side) return;
-    // 다음 단계: 실제 토론 화면 라우트로 이동 (예: /debate/[topicId]/chat)
-    router.push(`/debate/${topicId}/chat?side=${side}`);
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -101,11 +143,11 @@ export default function DebateSetupPage() {
                   {topic.category}
                 </Badge>
                 <Badge variant={levelBadgeVariant(topic.level)} className="rounded-full">
-                  {topic.level}
+                  {levelLabel(topic.level)}
                 </Badge>
               </div>
               <CardTitle className="text-xl leading-7">{topic.title}</CardTitle>
-              <CardDescription className="leading-6">{topic.desc}</CardDescription>
+              <CardDescription className="leading-6">{topic.description ?? ""}</CardDescription>
             </CardHeader>
 
             <CardContent>

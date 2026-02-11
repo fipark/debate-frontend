@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Mail, Lock, User } from "lucide-react";
-
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api/api";
+import axios from "axios";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
@@ -23,14 +24,22 @@ export default function SignupPage() {
     try {
       setLoading(true);
 
-      // ✅ 나중에 백엔드 엔드포인트로 교체
-      // const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, { ... })
-      // const data = await res.json()
+      const res = await api.post("/auth/signup", {
+        email,
+        password,
+        name,
+      });
 
-      console.log("SIGNUP payload", { name, email, password });
-      alert("회원가입 시도(더미). 나중에 API로 교체하면 됩니다.");
-    } catch {
-      alert("회원가입 실패");
+      // 예: { id, email, name }
+      console.log("SIGNUP success:", res.data);
+      alert(`회원가입 성공! (${res.data.name}) 님`);
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const msg = err.response?.data?.message ?? err.response?.data?.error ?? "회원가입 실패";
+        alert(msg);
+      } else {
+        alert("회원가입 실패");
+      }
     } finally {
       setLoading(false);
     }
@@ -87,7 +96,7 @@ export default function SignupPage() {
 
         <div className="mt-6 text-center text-sm text-muted-foreground">
           이미 계정이 있나요?{" "}
-          <Link href="/login" className="font-semibold text-primary hover:underline">
+          <Link href="/signin" className="font-semibold text-primary hover:underline">
             로그인
           </Link>
         </div>

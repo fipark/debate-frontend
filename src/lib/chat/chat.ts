@@ -1,4 +1,4 @@
-export type Role = "assistant" | "user";
+export type Role = "assistant" | "user" | "moderator";
 export type MessageStatus = "done" | "streaming";
 
 export type Message = {
